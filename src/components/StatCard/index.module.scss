@@ -1,0 +1,135 @@
+@use '@/styles/variables.scss' as *;
+
+.statCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  position: relative;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: $shadow-card-hover;
+  }
+
+  &.primary {
+    .value {
+      color: $color-primary;
+    }
+    &::before {
+      background: linear-gradient(135deg, rgba($color-primary, 0.1) 0%, rgba($color-primary, 0.02) 100%);
+    }
+  }
+
+  &.success {
+    .value {
+      color: $color-success;
+    }
+    &::before {
+      background: linear-gradient(135deg, rgba($color-success, 0.1) 0%, rgba($color-success, 0.02) 100%);
+    }
+  }
+
+  &.warning {
+    .value {
+      color: $color-warning;
+    }
+    &::before {
+      background: linear-gradient(135deg, rgba($color-warning, 0.1) 0%, rgba($color-warning, 0.02) 100%);
+    }
+  }
+
+  &.error {
+    .value {
+      color: $color-error;
+    }
+    &::before {
+      background: linear-gradient(135deg, rgba($color-error, 0.1) 0%, rgba($color-error, 0.02) 100%);
+    }
+  }
+
+  &.info {
+    .value {
+      color: $color-info;
+    }
+    &::before {
+      background: linear-gradient(135deg, rgba($color-info, 0.1) 0%, rgba($color-info, 0.02) 100%);
+    }
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80rpx;
+    border-radius: $radius-lg $radius-lg 0 0;
+    pointer-events: none;
+  }
+}
+
+.cardContent {
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: $spacing-sm;
+}
+
+.value {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+}
+
+.unit {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-left: 8rpx;
+}
+
+.trend {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+
+  &.up {
+    background: $color-bg-success;
+    .trendText {
+      color: $color-success;
+    }
+  }
+
+  &.down {
+    background: $color-bg-error;
+    .trendText {
+      color: $color-error;
+    }
+  }
+
+  &.none {
+    background: $color-bg-hover;
+    .trendText {
+      color: $color-text-tertiary;
+    }
+  }
+}
+
+.trendText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}

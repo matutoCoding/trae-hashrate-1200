@@ -1,0 +1,47 @@
+// ============================================
+// 主题配色变量（慈善药品发放系统）
+// ============================================
+
+// 品牌主题色：医疗绿（健康、希望、慈善）
+$color-primary: #00b42a;
+$color-primary-light: #33c255;
+$color-primary-dark: #009a23;
+
+// 功能色
+$color-success: #00b42a;
+$color-warning: #ff7d00;
+$color-error: #f53f3f;
+$color-info: #165dff;
+
+// 业务语义色
+$color-expiring: #ff7d00;  // 临期
+$color-expired: #f53f3f;   // 过期
+$color-locked: #86909c;    // 锁定
+$color-approved: #00b42a;  // 已通过
+$color-pending: #ff7d00;   // 待审批
+$color-rejected: #f53f3f;  // 已驳回
+
+// 背景色
+$color-bg-page: #f5f6f7;
+$color-bg-card: #ffffff;
+$color-bg-hover: #f2f3f5;
+$color-bg-success: #e8ffed;
+$color-bg-warning: #fff3e8;
+$color-bg-error: #ffece8;
+$color-bg-info: #e8f0ff;
+
+// 文本色
+$color-text-primary: #1d2129;
+$color-text-secondary: #4e5969;
+$color-text-tertiary: #86909c;
+$color-text-disabled: #c9cdd4;
+$color-text-white: #ffffff;
+
+// 边框色
+$color-border: #e5e6eb;
+$color-divider: #f2f3f5;
+
+// 渐变
+$gradient-primary: linear-gradient(135deg, #00b42a 0%, #33c255 100%);
+$gradient-warning: linear-gradient(135deg, #ff7d00 0%, #ff9a2e 100%);
+$gradient-error: linear-gradient(135deg, #f53f3f 0%, #ff6b6b 100%);

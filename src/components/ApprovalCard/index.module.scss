@@ -1,0 +1,200 @@
+@use '@/styles/variables.scss' as *;
+
+.approvalCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+    box-shadow: $shadow-card-hover;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  flex: 1;
+  margin-right: $spacing-sm;
+}
+
+.cardBody {
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.label {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.value {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.progressSection {
+  margin-bottom: $spacing-md;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.progressLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.progressText {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.progressBar {
+  height: 8rpx;
+  background: $color-bg-hover;
+  border-radius: $radius-round;
+  overflow: hidden;
+  margin-bottom: $spacing-md;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: $radius-round;
+  transition: width $transition-base;
+
+  &.pending,
+  &.processing {
+    background: $color-warning;
+  }
+
+  &.approved {
+    background: $color-success;
+  }
+
+  &.rejected {
+    background: $color-error;
+  }
+}
+
+.branchList {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.branchDot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.branchNode {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  border: 3rpx solid $color-border;
+  background: $color-bg-card;
+  z-index: 1;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.branchDot {
+  &.current .branchNode {
+    border-color: $color-primary;
+    background: $color-primary;
+    box-shadow: 0 0 0 8rpx rgba($color-primary, 0.2);
+  }
+
+  &.approved .branchNode {
+    border-color: $color-success;
+    background: $color-success;
+  }
+
+  &.rejected .branchNode {
+    border-color: $color-error;
+    background: $color-error;
+  }
+
+  &.pending .branchNode {
+    border-color: $color-border;
+    background: $color-bg-card;
+  }
+}
+
+.branchCheck {
+  position: absolute;
+  left: 4rpx;
+  top: 2rpx;
+  font-size: 16rpx;
+  color: #fff;
+  z-index: 2;
+  width: 24rpx;
+  text-align: center;
+}
+
+.branchLine {
+  flex: 1;
+  height: 3rpx;
+  margin-left: -3rpx;
+
+  &.approved {
+    background: $color-success;
+  }
+
+  &.pending {
+    background: $color-border;
+  }
+}
+
+.remarkSection {
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.remarkLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.remarkText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  @include text-ellipsis-multi(2);
+}

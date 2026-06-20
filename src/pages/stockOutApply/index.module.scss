@@ -1,0 +1,291 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 160rpx;
+}
+
+.section {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  margin: $spacing-md $page-padding;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.formItem {
+  margin-bottom: $spacing-md;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 80rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.formTextarea {
+  width: 100%;
+  min-height: 160rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.formRow {
+  display: flex;
+  gap: $spacing-md;
+
+  .formItem {
+    flex: 1;
+  }
+}
+
+.fifoSection {
+  background: $color-bg-success;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+
+.fifoTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-success;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+}
+
+.fifoIcon {
+  font-size: 28rpx;
+  margin-right: 8rpx;
+}
+
+.fifoDesc {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  margin-bottom: $spacing-sm;
+}
+
+.batchList {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+
+.batchItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.batchInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.batchNo {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.batchDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.batchQty {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: $spacing-sm;
+}
+
+.qtyNumber {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  display: block;
+}
+
+.qtyUnit {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  margin-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.summaryLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.summaryValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.summaryHighlight {
+  color: $color-primary;
+}
+
+.routerInfo {
+  background: $color-bg-info;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+
+.routerTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-info;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.routerBranches {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.routerBranch {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-sm $spacing-xs;
+  background: $color-bg-card;
+  border-radius: $radius-sm;
+}
+
+.branchName {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.branchRole {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.branchArrow {
+  font-size: 24rpx;
+  color: $color-text-tertiary;
+  flex-shrink: 0;
+}
+
+.submitBtn {
+  position: fixed;
+  bottom: calc(40rpx + env(safe-area-inset-bottom));
+  left: $page-padding;
+  right: $page-padding;
+  height: $button-height-lg;
+  background: $gradient-primary;
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba($color-primary, 0.3);
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.submitBtnText {
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+}
+
+.drugSelector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+}
+
+.drugSelectorText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.drugSelectorPlaceholder {
+  font-size: $font-size-md;
+  color: $color-text-disabled;
+}
+
+.drugSelectorArrow {
+  font-size: 24rpx;
+  color: $color-text-tertiary;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.categoryTag {
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 1rpx solid $color-border;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    border-color: $color-primary;
+  }
+}

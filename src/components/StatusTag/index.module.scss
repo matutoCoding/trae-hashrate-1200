@@ -1,0 +1,67 @@
+@use '@/styles/variables.scss' as *;
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-xs;
+  white-space: nowrap;
+
+  &.small {
+    padding: 2rpx 12rpx;
+    .tagText {
+      font-size: $font-size-xs;
+      line-height: 1.4;
+    }
+  }
+
+  &.medium {
+    padding: 4rpx 16rpx;
+    .tagText {
+      font-size: $font-size-sm;
+      line-height: 1.4;
+    }
+  }
+
+  &.large {
+    padding: 6rpx 20rpx;
+    .tagText {
+      font-size: $font-size-md;
+      line-height: 1.4;
+    }
+  }
+
+  &.primary {
+    background-color: rgba($color-primary, 0.1);
+    color: $color-primary;
+  }
+
+  &.success {
+    background-color: $color-bg-success;
+    color: $color-success;
+  }
+
+  &.warning {
+    background-color: $color-bg-warning;
+    color: $color-warning;
+  }
+
+  &.error {
+    background-color: $color-bg-error;
+    color: $color-error;
+  }
+
+  &.info {
+    background-color: $color-bg-info;
+    color: $color-info;
+  }
+
+  &.default {
+    background-color: $color-bg-hover;
+    color: $color-text-secondary;
+  }
+}
+
+.tagText {
+  font-weight: $font-weight-medium;
+}
