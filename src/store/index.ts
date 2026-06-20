@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Drug, DrugBatch, StockInRecord, ExpiryWarning } from '../types/drug';
 import type { ApprovalOrder, RouterRule, ApprovalBranch, ApprovalContent } from '../types/approval';
 import type { Recipient, QualificationReview, DistributionRecord } from '../types/distribution';
@@ -10,6 +11,7 @@ import { matchRouterRule } from '../utils/approvalRouter';
 import { getExpiryWarningLevel, isExpired } from '../utils/date';
 
 interface AppState {
+  initialized: boolean;
   drugs: Drug[];
   batches: DrugBatch[];
   stockInRecords: StockInRecord[];
@@ -96,9 +98,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   recipients: [],
   qualificationReviews: [],
   distributionRecords: [],
+  initialized: false,
   reservedQuantities: {},
 
   initData: () => {
+    const { initialized } = get();
+    if (initialized) {
+      const { batches, approvalOrders } = get();
+
+      const reservedQuantities: Record<string, number> = {};
+      approvalOrders.forEach(order => {
+        if ((order.status === 'pending' || order.status === 'processing') && order.content.batchList) {
+          order.content.batchList.forEach(item => {
+            if (reservedQuantities[item.batchId]) {
+              reservedQuantities[item.batchId] += item.quantity;
+            } else {
+              reservedQuantities[item.batchId] = item.quantity;
+            }
+          });
+        }
+      });
+
+      const expiryWarnings = generateExpiryWarnings(batches);
+
+      set({ expiryWarnings, reservedQuantities });
+      get().refreshAllDrugStatus();
+      return;
+    }
+
     const drugs = [...mockDrugs];
     const batches = [...mockDrugBatches];
     const stockInRecords = [...mockStockInRecords];
@@ -123,6 +150,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     set({
+      initialized: true,
       drugs,
       batches,
       stockInRecords,
@@ -134,6 +162,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       distributionRecords,
       reservedQuantities
     });
+
+    get().refreshAllDrugStatus();
   },
 
   addStockIn: (record) => {
@@ -258,16 +288,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       }))
     };
 
-    const matchedRule = matchRouterRule(
+    const matchResult = matchRouterRule(
       routerRules.filter(r => r.enabled && r.approvalType === 'stock_out'),
       content
     );
 
-    if (!matchedRule) {
+    if (!matchResult.matched || !matchResult.rule) {
       return { success: false, message: '未匹配到审批规则' };
     }
 
-    const branches: ApprovalBranch[] = matchedRule.branches.map((template, index) => ({
+    const matchedRule = matchResult.rule;
+    const branches: ApprovalBranch[] = matchResult.branches.map((template, index) => ({
       id: generateId('branch'),
       name: template.name,
       level: template.level,
@@ -642,4 +673,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { drugs } = get();
     drugs.forEach(d => get().refreshDrugStatus(d.id));
   }
+}, {
+  name: 'charity-pharmacy-storage',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({
+    initialized: state.initialized,
+    drugs: state.drugs,
+    batches: state.batches,
+    stockInRecords: state.stockInRecords,
+    approvalOrders: state.approvalOrders,
+    routerRules: state.routerRules,
+    recipients: state.recipients,
+    qualificationReviews: state.qualificationReviews,
+    distributionRecords: state.distributionRecords,
+    reservedQuantities: state.reservedQuantities
+  })
 }));

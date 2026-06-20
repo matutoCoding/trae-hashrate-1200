@@ -278,7 +278,12 @@ const StockOutApplyPage: React.FC = () => {
           <Text className={styles.sectionTitle}>审批流程</Text>
 
           <View className={styles.routerInfo}>
-            <Text className={styles.routerTitle}>匹配规则：{routerMatch.rule?.name}</Text>
+            <Text className={styles.routerTitle}>
+              🎯 匹配规则：{routerMatch.rule?.name}
+              <Text style={{ fontSize: '24rpx', color: '#86909c', fontWeight: '400', marginLeft: '16rpx' }}>
+                （共 {routerMatch.branches.length} 级审批）
+              </Text>
+            </Text>
             <View className={styles.routerBranches}>
               {routerMatch.branches.map((branch, index) => (
                 <React.Fragment key={branch.id}>

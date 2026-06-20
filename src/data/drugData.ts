@@ -470,22 +470,25 @@ export const mockDrugBatches: DrugBatch[] = [
   }
 ];
 
-export function generateExpiryWarnings(): ExpiryWarning[] {
+export function generateExpiryWarnings(batchesInput?: DrugBatch[]): ExpiryWarning[] {
   const warnings: ExpiryWarning[] = [];
+  const targetBatches = batchesInput && batchesInput.length > 0 ? batchesInput : mockDrugBatches;
 
-  mockDrugBatches.forEach(batch => {
-    if (batch.status === 'expired' || batch.status === 'expiring_soon') {
-      const daysRemaining = daysFromNow(batch.expiryDate);
-      let warningLevel: 'severe' | 'warning' | 'reminder';
+  targetBatches.forEach(batch => {
+    const daysRemaining = daysFromNow(batch.expiryDate);
+    let warningLevel: 'severe' | 'warning' | 'reminder' | null = null;
 
-      if (daysRemaining < 0 || daysRemaining <= 30) {
-        warningLevel = 'severe';
-      } else if (daysRemaining <= 90) {
-        warningLevel = 'warning';
-      } else {
-        warningLevel = 'reminder';
-      }
+    if (daysRemaining < 0) {
+      warningLevel = 'severe';
+    } else if (daysRemaining <= 30) {
+      warningLevel = 'severe';
+    } else if (daysRemaining <= 90) {
+      warningLevel = 'warning';
+    } else if (daysRemaining <= 180) {
+      warningLevel = 'reminder';
+    }
 
+    if (warningLevel) {
       warnings.push({
         id: `warn_${batch.id}`,
         drugId: batch.drugId,

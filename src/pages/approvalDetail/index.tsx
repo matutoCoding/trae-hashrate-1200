@@ -169,6 +169,12 @@ const ApprovalDetailPage: React.FC = () => {
               {approval.routerRuleName}
             </Text>
           </View>
+          <View className={styles.infoRow}>
+            <Text className={styles.infoLabel}>审批级别</Text>
+            <Text className={styles.infoValue}>
+              共 {approval.totalLevels} 级，当前第 {approval.currentLevel} 级
+            </Text>
+          </View>
         </View>
 
         <View className={styles.section}>
