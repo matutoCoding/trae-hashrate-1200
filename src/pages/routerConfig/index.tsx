@@ -36,15 +36,52 @@ const RouterConfigPage: React.FC = () => {
   };
 
   const handleAddRule = () => {
+    const defaultConditions: RouterCondition[] = [{
+      id: `cond_${Date.now()}_0`,
+      field: 'amount',
+      operator: '>',
+      value: '0',
+      label: '金额 > 0'
+    }];
+    const defaultBranches = [{
+      id: `branch_${Date.now()}_0`,
+      name: '一级审批',
+      level: 1,
+      approverRole: '仓库管理员',
+      approverList: ['张管理员']
+    }];
     setEditingRule({
       name: '',
       approvalType: activeType,
-      conditions: [{ field: 'amount', operator: '>', value: '0', logicOp: 'AND' }],
+      conditions: defaultConditions,
+      conditionLogic: 'AND',
+      branches: defaultBranches,
       approvalLevels: 1,
       priority: rules.length + 1,
       enabled: true
     });
     setShowModal(true);
+  };
+
+  const updateBranches = (levels: number) => {
+    if (!editingRule) return;
+    const roleMap = [
+      { name: '仓库管理员', role: '仓库管理员' },
+      { name: '部门主管', role: '部门主管' },
+      { name: '分管领导', role: '分管领导' }
+    ];
+    const branches = [];
+    for (let i = 0; i < levels; i++) {
+      const oldBranch = editingRule.branches?.[i];
+      branches.push(oldBranch || {
+        id: `branch_${Date.now()}_${i}`,
+        name: `${['一', '二', '三'][i]}级审批`,
+        level: i + 1,
+        approverRole: roleMap[i].role,
+        approverList: [roleMap[i].name]
+      });
+    }
+    setEditingRule({ ...editingRule, branches });
   };
 
   const handleSaveRule = () => {
@@ -53,11 +90,31 @@ const RouterConfigPage: React.FC = () => {
       return;
     }
 
-    if (editingRule.id) {
-      updateRouterRule(editingRule as RouterRule);
+    const conditions = editingRule.conditions.map((c, i) => ({
+      ...c,
+      id: c.id || `cond_${Date.now()}_${i}`
+    }));
+
+    const branches = editingRule.branches?.length
+      ? editingRule.branches.map((b, i) => ({
+          ...b,
+          id: b.id || `branch_${Date.now()}_${i}`,
+          level: i + 1
+        }))
+      : [{ id: `branch_${Date.now()}_0`, name: '一级审批', level: 1, approverRole: '仓库管理员', approverList: ['张管理员'] }];
+
+    const finalRule: Partial<RouterRule> = {
+      ...editingRule,
+      conditions,
+      branches,
+      conditionLogic: editingRule.conditionLogic || 'AND'
+    };
+
+    if (finalRule.id) {
+      updateRouterRule(finalRule as RouterRule);
       Taro.showToast({ title: '更新成功', icon: 'success' });
     } else {
-      addRouterRule(editingRule as Omit<RouterRule, 'id' | 'createTime' | 'updateTime'>);
+      addRouterRule(finalRule as Omit<RouterRule, 'id' | 'createTime' | 'updateTime'>);
       Taro.showToast({ title: '新增成功', icon: 'success' });
     }
     setShowModal(false);
@@ -260,7 +317,10 @@ const RouterConfigPage: React.FC = () => {
                     <View
                       key={level}
                       className={classnames(styles.formOption, editingRule.approvalLevels === level && styles.formOptionActive)}
-                      onClick={() => setEditingRule({ ...editingRule, approvalLevels: level })}
+                      onClick={() => {
+                        setEditingRule({ ...editingRule, approvalLevels: level });
+                        updateBranches(level);
+                      }}
                     >
                       <Text>{level}级审批</Text>
                     </View>

@@ -2,10 +2,13 @@
 import type { DrugBatch } from '../types/drug';
 
 export interface FifoResult {
+  success: boolean;
+  allocations: FifoBatchItem[];
   batchList: FifoBatchItem[];
   totalQuantity: number;
   canFulfill: boolean;
   shortfall: number;
+  message?: string;
 }
 
 export interface FifoBatchItem {
@@ -18,7 +21,7 @@ export interface FifoBatchItem {
   price: number;
 }
 
-export function sortBatchesByExpiry(batches: DrugBatch[]): DrugBatch[] {
+export function sortBatchesByExpiry<T extends { expiryDate: string }>(batches: T[]): T[] {
   return [...batches].sort((a, b) => {
     const dateA = new Date(a.expiryDate).getTime();
     const dateB = new Date(b.expiryDate).getTime();
@@ -40,22 +43,35 @@ export function filterAvailableBatches(batches: DrugBatch[]): DrugBatch[] {
   });
 }
 
-export function calculateFifo(batches: DrugBatch[], requiredQuantity: number): FifoResult {
-  const availableBatches = filterAvailableBatches(batches);
+export function calculateFifo(batches: any[], requiredQuantity: number): FifoResult {
+  const availableBatches = batches.filter(batch => {
+    const status = batch.status;
+    if (status === 'locked' || status === 'expired' || status === 'used_up') {
+      return false;
+    }
+    const availQty = batch.availableQuantity ?? batch.remainingQuantity;
+    if (availQty <= 0) {
+      return false;
+    }
+    const expiryTime = new Date(batch.expiryDate).getTime();
+    const now = Date.now();
+    return expiryTime >= now;
+  });
+
   const sortedBatches = sortBatchesByExpiry(availableBatches);
 
-  const result: FifoBatchItem[] = [];
+  const allocations: FifoBatchItem[] = [];
   let remainingNeeded = requiredQuantity;
   let totalAllocated = 0;
 
   for (const batch of sortedBatches) {
     if (remainingNeeded <= 0) break;
 
-    const availableQty = batch.remainingQuantity;
+    const availableQty = batch.availableQuantity ?? batch.remainingQuantity;
     const allocateQty = Math.min(availableQty, remainingNeeded);
 
     if (allocateQty > 0) {
-      result.push({
+      allocations.push({
         batchId: batch.id,
         batchNo: batch.batchNo,
         quantity: allocateQty,
@@ -70,11 +86,16 @@ export function calculateFifo(batches: DrugBatch[], requiredQuantity: number): F
     }
   }
 
+  const canFulfill = remainingNeeded <= 0;
+
   return {
-    batchList: result,
+    success: canFulfill,
+    allocations,
+    batchList: allocations,
     totalQuantity: totalAllocated,
-    canFulfill: remainingNeeded <= 0,
-    shortfall: Math.max(0, remainingNeeded)
+    canFulfill,
+    shortfall: Math.max(0, remainingNeeded),
+    message: canFulfill ? undefined : `库存不足，缺 ${Math.max(0, remainingNeeded)} 单位`
   };
 }
 

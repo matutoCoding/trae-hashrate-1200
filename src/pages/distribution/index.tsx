@@ -128,26 +128,54 @@ const DistributionPage: React.FC = () => {
     Taro.showModal({
       title: '审核通过',
       content: '确认通过该受助资格审核？',
+      editable: true,
+      placeholderText: '请输入审核意见（选填）',
       success: (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '已通过', icon: 'success' });
+          const result = processQualificationReview({
+            reviewId,
+            action: 'approve',
+            remark: res.content || '',
+            reviewer: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'success' });
+            console.log('[Distribution] 审核通过:', reviewId);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
-    console.log('[Distribution] 审核通过:', reviewId);
   };
 
   const handleReviewReject = (reviewId: string) => {
     Taro.showModal({
       title: '审核驳回',
-      content: '确认驳回该受助资格审核？',
+      content: '请输入驳回原因',
+      editable: true,
+      placeholderText: '请输入驳回原因',
       success: (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '已驳回', icon: 'none' });
+          if (!res.content) {
+            Taro.showToast({ title: '请输入驳回原因', icon: 'none' });
+            return;
+          }
+          const result = processQualificationReview({
+            reviewId,
+            action: 'reject',
+            remark: res.content,
+            reviewer: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'none' });
+            console.log('[Distribution] 审核驳回:', reviewId);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
-    console.log('[Distribution] 审核驳回:', reviewId);
   };
 
   const handleRefresh = () => {
