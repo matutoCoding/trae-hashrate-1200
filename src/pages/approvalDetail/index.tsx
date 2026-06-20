@@ -1,33 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, Textarea, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
-import { getApprovalById } from '../../data/approvalData';
+import { useAppStore } from '../../store';
 import { APPROVAL_TYPE_MAP, APPROVAL_STATUS_MAP } from '../../types/approval';
 import { formatDateTime } from '../../utils/date';
 import StatusTag from '../../components/StatusTag';
 
 const ApprovalDetailPage: React.FC = () => {
-  const [approval, setApproval] = useState<any>(null);
+  const [approvalId, setApprovalId] = useState<string>('');
   const [remark, setRemark] = useState('');
   const [showRemarkInput, setShowRemarkInput] = useState(false);
+
+  const approvalOrders = useAppStore(state => state.approvalOrders);
+  const processApproval = useAppStore(state => state.processApproval);
+
+  const approval = useMemo(() => {
+    return approvalOrders.find(o => o.id === approvalId);
+  }, [approvalOrders, approvalId]);
 
   useEffect(() => {
     const pages = Taro.getCurrentPages();
     const currentPage = pages[pages.length - 1];
     const params = (currentPage as any).options || (currentPage as any).$router?.params || {};
     const id = params.id || '';
-
-    if (id) {
-      const data = getApprovalById(id);
-      setApproval(data);
-      console.log('[ApprovalDetail] 审批详情:', id, data?.title);
-    }
+    setApprovalId(id);
+    console.log('[ApprovalDetail] 审批详情:', id);
   }, []);
 
+  const currentLevel = useMemo(() => {
+    if (!approval) return 0;
+    return approval.currentLevel;
+  }, [approval]);
+
   const handleApprove = () => {
-    setShowRemarkInput(true);
     Taro.showModal({
       title: '审批通过',
       content: '确认通过该审批？可添加审批意见。',
@@ -35,11 +42,22 @@ const ApprovalDetailPage: React.FC = () => {
       placeholderText: '请输入审批意见（选填）',
       success: (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '审批通过', icon: 'success' });
-          console.log('[ApprovalDetail] 审批通过:', approval?.id, res.content);
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
+          const result = processApproval({
+            approvalId,
+            action: 'approve',
+            level: currentLevel,
+            remark: res.content || '',
+            approver: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'success' });
+            console.log('[ApprovalDetail] 审批通过:', approvalId, res.content);
+            setTimeout(() => {
+              Taro.navigateBack();
+            }, 1500);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
@@ -57,11 +75,22 @@ const ApprovalDetailPage: React.FC = () => {
             Taro.showToast({ title: '请输入驳回原因', icon: 'none' });
             return;
           }
-          Taro.showToast({ title: '已驳回', icon: 'none' });
-          console.log('[ApprovalDetail] 审批驳回:', approval?.id, res.content);
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
+          const result = processApproval({
+            approvalId,
+            action: 'reject',
+            level: currentLevel,
+            remark: res.content,
+            approver: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'none' });
+            console.log('[ApprovalDetail] 审批驳回:', approvalId, res.content);
+            setTimeout(() => {
+              Taro.navigateBack();
+            }, 1500);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
@@ -175,6 +204,20 @@ const ApprovalDetailPage: React.FC = () => {
             </View>
           )}
         </View>
+
+        {approval.content.batchList && approval.content.batchList.length > 0 && (
+          <View className={styles.section}>
+            <Text className={styles.sectionTitle}>FIFO 分配批次</Text>
+            {approval.content.batchList.map((item, index) => (
+              <View key={index} className={styles.infoRow}>
+                <Text className={styles.infoLabel}>第{index + 1}批 · {item.batchNo}</Text>
+                <Text className={styles.infoValue}>
+                  出 {item.quantity} {item.unit} · 有效期至 {item.expiryDate}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View className={styles.section}>
           <Text className={styles.sectionTitle}>审批流程</Text>

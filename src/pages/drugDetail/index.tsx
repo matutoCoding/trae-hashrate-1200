@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { getDrugById, getBatchesByDrugId } from '../../data/drugData';
+import { useAppStore } from '../../store';
 import { DRUG_CATEGORY_MAP, BATCH_STATUS_MAP } from '../../types/drug';
 import { formatDate, daysFromNow } from '../../utils/date';
 import { calculateFifo, getTotalAvailableQuantity } from '../../utils/fifo';
@@ -10,30 +10,34 @@ import StatusTag from '../../components/StatusTag';
 import classnames from 'classnames';
 
 const DrugDetailPage: React.FC = () => {
-  const [drug, setDrug] = useState<any>(null);
-  const [batches, setBatches] = useState<any[]>([]);
-  const [fifoResult, setFifoResult] = useState<any>(null);
+  const [drugId, setDrugId] = useState<string>('');
+
+  const drugs = useAppStore(state => state.drugs);
+  const batches = useAppStore(state => state.batches);
+  const reservedQuantities = useAppStore(state => state.reservedQuantities);
+
+  const drug = useMemo(() => drugs.find(d => d.id === drugId), [drugs, drugId]);
+  const drugBatches = useMemo(() => batches.filter(b => b.drugId === drugId), [batches, drugId]);
+
+  const fifoResult = useMemo(() => {
+    if (drugBatches.length === 0) return null;
+    const availableBatches = drugBatches.map(b => ({
+      ...b,
+      availableQuantity: b.remainingQuantity - (reservedQuantities[b.id] || 0)
+    })).filter(b => b.availableQuantity > 0 && b.status !== 'expired' && b.status !== 'locked');
+    const available = getTotalAvailableQuantity(availableBatches);
+    if (available <= 0) return null;
+    const result = calculateFifo(availableBatches, Math.min(available, 50));
+    return result;
+  }, [drugBatches, reservedQuantities]);
 
   useEffect(() => {
     const pages = Taro.getCurrentPages();
     const currentPage = pages[pages.length - 1];
     const params = (currentPage as any).options || (currentPage as any).$router?.params || {};
     const id = params.id || '';
-
-    if (id) {
-      const drugData = getDrugById(id);
-      const batchData = getBatchesByDrugId(id);
-      setDrug(drugData);
-      setBatches(batchData);
-
-      if (batchData.length > 0) {
-        const available = getTotalAvailableQuantity(batchData);
-        const result = calculateFifo(batchData, Math.min(available, 50));
-        setFifoResult(result);
-      }
-
-      console.log('[DrugDetail] 药品详情:', id, drugData?.name);
-    }
+    setDrugId(id);
+    console.log('[DrugDetail] 药品详情:', id);
   }, []);
 
   const getBatchStatusType = (status: string) => {
@@ -91,10 +95,10 @@ const DrugDetailPage: React.FC = () => {
 
         <View style={{ background: '#fff', borderRadius: '16rpx', padding: '32rpx', marginBottom: '24rpx', boxShadow: '0 2rpx 12rpx rgba(0,0,0,0.08)' }}>
           <Text style={{ fontSize: '32rpx', fontWeight: '600', marginBottom: '24rpx', display: 'block' }}>
-            批次列表 <Text style={{ fontSize: '24rpx', color: '#86909c', fontWeight: '400' }}>(共 {batches.length} 个批次)</Text>
+            批次列表 <Text style={{ fontSize: '24rpx', color: '#86909c', fontWeight: '400' }}>(共 {drugBatches.length} 个批次)</Text>
           </Text>
 
-          {batches.map((batch, index) => {
+          {drugBatches.map((batch, index) => {
             const days = daysFromNow(batch.expiryDate);
             return (
               <View
@@ -132,6 +136,11 @@ const DrugDetailPage: React.FC = () => {
                   <Text style={{ fontSize: '24rpx', color: '#86909c' }}>剩余数量</Text>
                   <Text style={{ fontSize: '24rpx', color: '#1d2129', fontWeight: '500' }}>
                     {batch.remainingQuantity} {batch.unit}
+                    {reservedQuantities[batch.id] > 0 && (
+                      <Text style={{ color: '#ff7d00', marginLeft: '8rpx' }}>
+                        (已申请占用 {reservedQuantities[batch.id]})
+                      </Text>
+                    )}
                   </Text>
                 </View>
               </View>

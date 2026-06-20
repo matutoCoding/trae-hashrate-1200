@@ -5,12 +5,7 @@ import styles from './index.module.scss';
 import classnames from 'classnames';
 import StatusTag from '../../components/StatusTag';
 import EmptyState from '../../components/EmptyState';
-import {
-  mockRecipients,
-  mockDistributionRecords,
-  mockQualificationReviews,
-  getPendingQualificationReviews
-} from '../../data/distributionData';
+import { useAppStore } from '../../store';
 import {
   QUALIFICATION_TYPE_MAP,
   RECIPIENT_STATUS_MAP,
@@ -25,29 +20,65 @@ const DistributionPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('recipient');
   const [searchText, setSearchText] = useState('');
 
+  const recipients = useAppStore(state => state.recipients);
+  const distributionRecords = useAppStore(state => state.distributionRecords);
+  const qualificationReviews = useAppStore(state => state.qualificationReviews);
+  const processQualificationReview = useAppStore(state => state.processQualificationReview);
+
   const stats = useMemo(() => {
-    const totalRecipients = mockRecipients.length;
-    const qualifiedCount = mockRecipients.filter(r => r.status === 'qualified').length;
-    const pendingCount = getPendingQualificationReviews().length;
-    const totalRecords = mockDistributionRecords.length;
+    const totalRecipients = recipients.length;
+    const qualifiedCount = recipients.filter(r => r.status === 'qualified').length;
+    const pendingCount = qualificationReviews.filter(r => r.status === 'pending').length;
+    const totalRecords = distributionRecords.length;
     return { totalRecipients, qualifiedCount, pendingCount, totalRecords };
-  }, []);
+  }, [recipients, qualificationReviews, distributionRecords]);
 
   const filteredRecipients = useMemo(() => {
-    return mockRecipients.filter(r => {
+    return recipients.filter(r => {
       if (!searchText) return true;
       return r.name.includes(searchText) || r.idCard.includes(searchText) || r.phone.includes(searchText);
     });
-  }, [searchText]);
+  }, [searchText, recipients]);
 
   const filteredRecords = useMemo(() => {
-    return mockDistributionRecords.filter(r => {
+    return distributionRecords.filter(r => {
       if (!searchText) return true;
       return r.recipientName.includes(searchText) || r.drugName.includes(searchText) || r.recordNo.includes(searchText);
     }).sort((a, b) => new Date(b.distributeTime).getTime() - new Date(a.distributeTime).getTime());
-  }, [searchText]);
+  }, [searchText, distributionRecords]);
 
-  const pendingReviews = useMemo(() => getPendingQualificationReviews(), []);
+  const pendingReviews = useMemo(() => {
+    return qualificationReviews.filter(r => r.status === 'pending');
+  }, [qualificationReviews]);
+
+  const checkQualificationAndProceed = (recipient: any) => {
+    if (recipient.status === 'qualified') {
+      Taro.navigateTo({
+        url: `/pages/distributionRecord/index?recipientId=${recipient.id}`
+      });
+    } else {
+      let reason = '';
+      switch (recipient.status) {
+        case 'pending':
+          reason = '资格审核中，请等待审核通过后再办理发放';
+          break;
+        case 'disqualified':
+          reason = '资格审核未通过，无法办理药品发放';
+          break;
+        case 'expired':
+          reason = '资格已过期，请重新申请资格审核';
+          break;
+        default:
+          reason = '资格状态异常，请先完成资格审核';
+      }
+      Taro.showModal({
+        title: '资格校验未通过',
+        content: reason,
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+    }
+  };
 
   const getStatusType = (status: string) => {
     switch (status) {
@@ -67,9 +98,10 @@ const DistributionPage: React.FC = () => {
   };
 
   const handleRecipientClick = (recipientId: string) => {
-    Taro.navigateTo({
-      url: `/pages/qualificationReview/index?id=${recipientId}`
-    });
+    const recipient = recipients.find(r => r.id === recipientId);
+    if (recipient) {
+      checkQualificationAndProceed(recipient);
+    }
   };
 
   const handleRecordClick = (recordId: string) => {

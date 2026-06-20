@@ -5,7 +5,7 @@ import styles from './index.module.scss';
 import classnames from 'classnames';
 import EmptyState from '../../components/EmptyState';
 import StatusTag from '../../components/StatusTag';
-import { generateExpiryWarnings, mockDrugBatches } from '../../data/drugData';
+import { useAppStore } from '../../store';
 import { getTotalAvailableQuantity, getTotalLockedQuantity, getTotalExpiredQuantity } from '../../utils/fifo';
 import { formatDate } from '../../utils/date';
 import type { ExpiryWarning } from '../../types/drug';
@@ -15,15 +15,23 @@ type TabType = 'warning' | 'expired' | 'locked';
 const StockoutPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('warning');
 
-  const warnings = useMemo(() => generateExpiryWarnings(), []);
+  const expiryWarnings = useAppStore(state => state.expiryWarnings);
+  const batches = useAppStore(state => state.batches);
+  const reservedQuantities = useAppStore(state => state.reservedQuantities);
+  const refreshExpiryWarnings = useAppStore(state => state.refreshExpiryWarnings);
+
+  const warnings = useMemo(() => expiryWarnings, [expiryWarnings]);
 
   const stats = useMemo(() => {
-    const available = getTotalAvailableQuantity(mockDrugBatches);
-    const locked = getTotalLockedQuantity(mockDrugBatches);
-    const expired = getTotalExpiredQuantity(mockDrugBatches);
+    const available = getTotalAvailableQuantity(batches.map(b => ({
+      ...b,
+      availableQuantity: b.remainingQuantity - (reservedQuantities[b.id] || 0)
+    })));
+    const locked = getTotalLockedQuantity(batches);
+    const expired = getTotalExpiredQuantity(batches);
     const expiring = warnings.filter(w => w.warningLevel === 'severe' || w.warningLevel === 'warning').length;
     return { available, locked, expired, expiring };
-  }, [warnings]);
+  }, [warnings, batches, reservedQuantities]);
 
   const displayWarnings = useMemo(() => {
     switch (activeTab) {
@@ -32,7 +40,7 @@ const StockoutPage: React.FC = () => {
       case 'expired':
         return warnings.filter(w => w.daysRemaining < 0);
       case 'locked':
-        return mockDrugBatches
+        return batches
           .filter(b => b.status === 'locked')
           .map(b => ({
             id: `locked_${b.id}`,
@@ -50,7 +58,7 @@ const StockoutPage: React.FC = () => {
       default:
         return [];
     }
-  }, [activeTab, warnings]);
+  }, [activeTab, warnings, batches]);
 
   const handleApplyOutbound = () => {
     Taro.navigateTo({
@@ -71,6 +79,7 @@ const StockoutPage: React.FC = () => {
   };
 
   const handleRefresh = () => {
+    refreshExpiryWarnings();
     Taro.showToast({ title: '刷新成功', icon: 'success' });
     setTimeout(() => {
       Taro.stopPullDownRefresh();
@@ -146,7 +155,7 @@ const StockoutPage: React.FC = () => {
             <Text className={styles.statCardTitle}>正常批次</Text>
             <View style={{ display: 'flex', alignItems: 'baseline' }}>
               <Text className={styles.statCardValue}>
-                {mockDrugBatches.filter(b => b.status === 'normal').length}
+                {batches.filter(b => b.status === 'normal').length}
               </Text>
               <Text className={styles.statCardUnit}>批次</Text>
             </View>
@@ -214,7 +223,7 @@ const StockoutPage: React.FC = () => {
             className={classnames(styles.tabItem, activeTab === 'locked' && styles.active)}
             onClick={() => setActiveTab('locked')}
           >
-            已锁定 ({mockDrugBatches.filter(b => b.status === 'locked').length})
+            已锁定 ({batches.filter(b => b.status === 'locked').length})
           </View>
         </View>
 

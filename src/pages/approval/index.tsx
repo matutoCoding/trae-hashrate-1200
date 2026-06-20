@@ -5,7 +5,7 @@ import styles from './index.module.scss';
 import classnames from 'classnames';
 import ApprovalCard from '../../components/ApprovalCard';
 import EmptyState from '../../components/EmptyState';
-import { mockApprovalOrders, mockRouterRules, getRouterRulesByType } from '../../data/approvalData';
+import { useAppStore } from '../../store';
 import { formatConditionDisplay } from '../../utils/approvalRouter';
 
 type TabType = 'pending' | 'approved' | 'router';
@@ -13,28 +13,31 @@ type TabType = 'pending' | 'approved' | 'router';
 const ApprovalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('pending');
 
+  const approvalOrders = useAppStore(state => state.approvalOrders);
+  const routerRules = useAppStore(state => state.routerRules);
+
   const pendingCount = useMemo(() => {
-    return mockApprovalOrders.filter(o => o.status === 'pending' || o.status === 'processing').length;
-  }, []);
+    return approvalOrders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+  }, [approvalOrders]);
 
   const approvedCount = useMemo(() => {
-    return mockApprovalOrders.filter(o => o.status === 'approved').length;
-  }, []);
+    return approvalOrders.filter(o => o.status === 'approved').length;
+  }, [approvalOrders]);
 
   const displayApprovals = useMemo(() => {
     switch (activeTab) {
       case 'pending':
-        return mockApprovalOrders.filter(o => o.status === 'pending' || o.status === 'processing');
+        return approvalOrders.filter(o => o.status === 'pending' || o.status === 'processing');
       case 'approved':
-        return mockApprovalOrders.filter(o => o.status === 'approved' || o.status === 'rejected');
+        return approvalOrders.filter(o => o.status === 'approved' || o.status === 'rejected');
       default:
         return [];
     }
-  }, [activeTab]);
+  }, [activeTab, approvalOrders]);
 
-  const routerRules = useMemo(() => {
-    return getRouterRulesByType('stock_out');
-  }, []);
+  const displayRules = useMemo(() => {
+    return routerRules.filter(r => r.approvalType === 'stock_out');
+  }, [routerRules]);
 
   const handleApprovalClick = (approvalId: string) => {
     Taro.navigateTo({
@@ -79,7 +82,7 @@ const ApprovalPage: React.FC = () => {
             <Text className={styles.statLabel}>已审批</Text>
           </View>
           <View className={styles.statItem}>
-            <Text className={styles.statNumber}>{routerRules.length}</Text>
+            <Text className={styles.statNumber}>{displayRules.length}</Text>
             <Text className={styles.statLabel}>路由规则</Text>
           </View>
         </View>
@@ -158,7 +161,7 @@ const ApprovalPage: React.FC = () => {
               </Text>
             </View>
 
-            {routerRules.map(rule => (
+            {displayRules.map(rule => (
               <View key={rule.id} className={styles.routerCard} onClick={handleRouterConfig}>
                 <View className={styles.routerHeader}>
                   <Text className={styles.routerTitle}>{rule.name}</Text>

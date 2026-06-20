@@ -5,7 +5,7 @@ import styles from './index.module.scss';
 import classnames from 'classnames';
 import StatusTag from '../../components/StatusTag';
 import EmptyState from '../../components/EmptyState';
-import { generateExpiryWarnings, mockDrugBatches } from '../../data/drugData';
+import { useAppStore } from '../../store';
 import { formatDate } from '../../utils/date';
 import type { ExpiryWarning } from '../../types/drug';
 
@@ -14,9 +14,11 @@ type TabType = 'all' | 'severe' | 'warning' | 'reminder' | 'expired';
 const WarningListPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
 
+  const expiryWarnings = useAppStore(state => state.expiryWarnings);
+  const batches = useAppStore(state => state.batches);
+
   const allWarnings = useMemo(() => {
-    const warnings = generateExpiryWarnings();
-    const expired = mockDrugBatches
+    const expired = batches
       .filter(b => b.status === 'expired')
       .map(b => ({
         id: `exp_${b.id}`,
@@ -31,8 +33,8 @@ const WarningListPage: React.FC = () => {
         daysRemaining: -10,
         warningLevel: 'severe' as const
       }));
-    return [...warnings, ...expired].sort((a, b) => a.daysRemaining - b.daysRemaining);
-  }, []);
+    return [...expiryWarnings, ...expired].sort((a, b) => a.daysRemaining - b.daysRemaining);
+  }, [expiryWarnings, batches]);
 
   const stats = useMemo(() => {
     const severe = allWarnings.filter(w => w.warningLevel === 'severe' && w.daysRemaining >= 0).length;

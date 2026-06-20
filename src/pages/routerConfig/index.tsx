@@ -1,39 +1,106 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Input, Switch } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
-import { mockRouterRules, getRouterRulesByType } from '../../data/approvalData';
+import { useAppStore } from '../../store';
 import { APPROVAL_TYPE_MAP, CONDITION_FIELD_MAP, OPERATOR_MAP } from '../../types/approval';
-import type { RouterRule } from '../../types/approval';
+import type { RouterRule, RouterCondition } from '../../types/approval';
 import { formatConditionDisplay } from '../../utils/approvalRouter';
 
 type TabType = 'stock_out' | 'distribution';
 
 const RouterConfigPage: React.FC = () => {
   const [activeType, setActiveType] = useState<TabType>('stock_out');
-  const [rules, setRules] = useState<RouterRule[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingRule, setEditingRule] = useState<Partial<RouterRule> | null>(null);
 
-  React.useEffect(() => {
-    const data = getRouterRulesByType(activeType);
-    setRules(data);
-    console.log('[RouterConfig] 路由规则:', activeType, data.length);
-  }, [activeType]);
+  const routerRules = useAppStore(state => state.routerRules);
+  const addRouterRule = useAppStore(state => state.addRouterRule);
+  const updateRouterRule = useAppStore(state => state.updateRouterRule);
+  const toggleRouterRule = useAppStore(state => state.toggleRouterRule);
+  const deleteRouterRule = useAppStore(state => state.deleteRouterRule);
 
-  const handleToggle = (ruleId: string) => {
-    setRules(prev => prev.map(rule =>
-      rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule
-    ));
+  const rules = useMemo(() => {
+    return routerRules.filter(r => r.approvalType === activeType);
+  }, [routerRules, activeType]);
+
+  const handleToggle = (ruleId: string, enabled: boolean) => {
+    toggleRouterRule(ruleId, !enabled);
+    console.log('[RouterConfig] 切换规则:', ruleId, !enabled);
   };
 
-  const handleEditRule = (ruleId: string) => {
-    Taro.showToast({ title: '编辑规则', icon: 'none' });
-    console.log('[RouterConfig] 编辑规则:', ruleId);
+  const handleEditRule = (rule: RouterRule) => {
+    setEditingRule({ ...rule });
+    setShowModal(true);
   };
 
   const handleAddRule = () => {
-    Taro.showToast({ title: '新增规则', icon: 'none' });
-    console.log('[RouterConfig] 新增规则');
+    setEditingRule({
+      name: '',
+      approvalType: activeType,
+      conditions: [{ field: 'amount', operator: '>', value: '0', logicOp: 'AND' }],
+      approvalLevels: 1,
+      priority: rules.length + 1,
+      enabled: true
+    });
+    setShowModal(true);
+  };
+
+  const handleSaveRule = () => {
+    if (!editingRule || !editingRule.name || !editingRule.conditions?.length) {
+      Taro.showToast({ title: '请填写完整信息', icon: 'none' });
+      return;
+    }
+
+    if (editingRule.id) {
+      updateRouterRule(editingRule as RouterRule);
+      Taro.showToast({ title: '更新成功', icon: 'success' });
+    } else {
+      addRouterRule(editingRule as Omit<RouterRule, 'id' | 'createTime' | 'updateTime'>);
+      Taro.showToast({ title: '新增成功', icon: 'success' });
+    }
+    setShowModal(false);
+    setEditingRule(null);
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定删除此路由规则？',
+      success: (res) => {
+        if (res.confirm) {
+          deleteRouterRule(ruleId);
+          Taro.showToast({ title: '删除成功', icon: 'success' });
+        }
+      }
+    });
+  };
+
+  const addCondition = () => {
+    if (editingRule) {
+      const conditions = [...(editingRule.conditions || [])];
+      if (conditions.length > 0) {
+        conditions[conditions.length - 1].logicOp = conditions[conditions.length - 1].logicOp || 'AND';
+      }
+      conditions.push({ field: 'amount', operator: '>', value: '0', logicOp: 'AND' });
+      setEditingRule({ ...editingRule, conditions });
+    }
+  };
+
+  const updateCondition = (index: number, field: keyof RouterCondition, value: any) => {
+    if (editingRule && editingRule.conditions) {
+      const conditions = [...editingRule.conditions];
+      conditions[index] = { ...conditions[index], [field]: value };
+      setEditingRule({ ...editingRule, conditions });
+    }
+  };
+
+  const removeCondition = (index: number) => {
+    if (editingRule && editingRule.conditions && editingRule.conditions.length > 1) {
+      const conditions = editingRule.conditions.filter((_, i) => i !== index);
+      setEditingRule({ ...editingRule, conditions });
+    }
   };
 
   const tabs = [
@@ -97,7 +164,7 @@ const RouterConfigPage: React.FC = () => {
               <View
                 key={rule.id}
                 className={styles.ruleCard}
-                onClick={() => handleEditRule(rule.id)}
+                onClick={() => handleEditRule(rule)}
               >
                 <View className={styles.ruleHeader}>
                   <Text className={styles.ruleName}>{rule.name}</Text>
@@ -148,7 +215,7 @@ const RouterConfigPage: React.FC = () => {
                     className={classnames(styles.switch, rule.enabled && styles.active)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleToggle(rule.id);
+                      handleToggle(rule.id, rule.enabled);
                     }}
                   >
                     <View className={styles.switchDot} />
@@ -164,6 +231,139 @@ const RouterConfigPage: React.FC = () => {
           )}
         </ScrollView>
       </View>
+
+      {showModal && editingRule && (
+        <View className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <View className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <View className={styles.modalHeader}>
+              <Text className={styles.modalTitle}>
+                {editingRule.id ? '编辑规则' : '新增规则'}
+              </Text>
+              <Text className={styles.modalClose} onClick={() => setShowModal(false)}>×</Text>
+            </View>
+
+            <ScrollView scrollY style={{ maxHeight: '600rpx' }}>
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>规则名称</Text>
+                <Input
+                  className={styles.formInput}
+                  placeholder="请输入规则名称"
+                  value={editingRule.name || ''}
+                  onInput={(e) => setEditingRule({ ...editingRule, name: e.detail.value })}
+                />
+              </View>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>审批级别</Text>
+                <View className={styles.formOptions}>
+                  {[1, 2, 3].map(level => (
+                    <View
+                      key={level}
+                      className={classnames(styles.formOption, editingRule.approvalLevels === level && styles.formOptionActive)}
+                      onClick={() => setEditingRule({ ...editingRule, approvalLevels: level })}
+                    >
+                      <Text>{level}级审批</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View className={styles.formItem}>
+                <View className={styles.formLabelRow}>
+                  <Text className={styles.formLabel}>触发条件</Text>
+                  <Text className={styles.formAddBtn} onClick={addCondition}>+ 添加条件</Text>
+                </View>
+
+                {editingRule.conditions?.map((cond, index) => (
+                  <View key={index} className={styles.conditionRow}>
+                    {index > 0 && (
+                      <View className={styles.conditionLogic}>
+                        {['AND', 'OR'].map(logic => (
+                          <Text
+                            key={logic}
+                            className={classnames(styles.logicBtn, cond.logicOp === logic && styles.logicBtnActive)}
+                            onClick={() => updateCondition(index, 'logicOp', logic)}
+                          >
+                            {logic === 'AND' ? '且' : '或'}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                    <View className={styles.conditionFields}>
+                      <View className={styles.conditionField}>
+                        {Object.entries(CONDITION_FIELD_MAP).map(([key, label]) => (
+                          <Text
+                            key={key}
+                            className={classnames(styles.fieldBtn, cond.field === key && styles.fieldBtnActive)}
+                            onClick={() => updateCondition(index, 'field', key)}
+                          >
+                            {label}
+                          </Text>
+                        ))}
+                      </View>
+                      <View className={styles.conditionOperator}>
+                        {Object.entries(OPERATOR_MAP).map(([key, label]) => (
+                          <Text
+                            key={key}
+                            className={classnames(styles.operatorBtn, cond.operator === key && styles.operatorBtnActive)}
+                            onClick={() => updateCondition(index, 'operator', key)}
+                          >
+                            {label}
+                          </Text>
+                        ))}
+                      </View>
+                      <Input
+                        className={styles.conditionValue}
+                        placeholder="值"
+                        value={cond.value || ''}
+                        onInput={(e) => updateCondition(index, 'value', e.detail.value)}
+                      />
+                      {editingRule.conditions && editingRule.conditions.length > 1 && (
+                        <Text className={styles.conditionDelete} onClick={() => removeCondition(index)}>×</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>优先级</Text>
+                <Input
+                  className={styles.formInput}
+                  type="number"
+                  placeholder="数字越小优先级越高"
+                  value={String(editingRule.priority || '')}
+                  onInput={(e) => setEditingRule({ ...editingRule, priority: parseInt(e.detail.value) || 1 })}
+                />
+              </View>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>备注</Text>
+                <Input
+                  className={styles.formInput}
+                  placeholder="选填"
+                  value={editingRule.remark || ''}
+                  onInput={(e) => setEditingRule({ ...editingRule, remark: e.detail.value })}
+                />
+              </View>
+            </ScrollView>
+
+            <View className={styles.modalFooter}>
+              {editingRule.id && (
+                <View className={styles.deleteBtn} onClick={() => handleDeleteRule(editingRule.id!)}>
+                  <Text style={{ color: '#f53f3f' }}>删除</Text>
+                </View>
+              )}
+              <View className={styles.cancelBtn} onClick={() => setShowModal(false)}>
+                <Text>取消</Text>
+              </View>
+              <View className={styles.confirmBtn} onClick={handleSaveRule}>
+                <Text style={{ color: '#fff' }}>保存</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

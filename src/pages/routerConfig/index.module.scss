@@ -238,3 +238,215 @@
   font-size: $font-size-sm;
   color: $color-text-tertiary;
 }
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  width: 680rpx;
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-border;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  font-size: 48rpx;
+  color: $color-text-tertiary;
+  line-height: 1;
+}
+
+.formItem {
+  padding: $spacing-md $spacing-lg;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.formAddBtn {
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
+.formInput {
+  height: 80rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  font-size: $font-size-base;
+}
+
+.formOptions {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.formOption {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &.formOptionActive {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+}
+
+.conditionRow {
+  margin-bottom: $spacing-sm;
+}
+
+.conditionLogic {
+  display: flex;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-xs;
+  padding-left: $spacing-lg;
+}
+
+.logicBtn {
+  padding: 4rpx 16rpx;
+  background: $color-bg-page;
+  border-radius: $radius-sm;
+  font-size: 24rpx;
+  color: $color-text-secondary;
+
+  &.logicBtnActive {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+}
+
+.conditionFields {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.conditionField {
+  display: flex;
+  gap: 4rpx;
+}
+
+.fieldBtn {
+  padding: 8rpx 12rpx;
+  background: $color-bg-page;
+  border-radius: $radius-sm;
+  font-size: 22rpx;
+  color: $color-text-secondary;
+
+  &.fieldBtnActive {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+}
+
+.conditionOperator {
+  display: flex;
+  gap: 4rpx;
+}
+
+.operatorBtn {
+  padding: 8rpx 12rpx;
+  background: $color-bg-page;
+  border-radius: $radius-sm;
+  font-size: 24rpx;
+  color: $color-text-secondary;
+  font-weight: $font-weight-semibold;
+
+  &.operatorBtnActive {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+}
+
+.conditionValue {
+  flex: 1;
+  height: 64rpx;
+  background: $color-bg-page;
+  border-radius: $radius-sm;
+  padding: 0 $spacing-sm;
+  font-size: $font-size-sm;
+}
+
+.conditionDelete {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-tertiary;
+  font-size: 32rpx;
+}
+
+.modalFooter {
+  display: flex;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-lg;
+  border-top: 1rpx solid $color-border;
+}
+
+.deleteBtn, .cancelBtn, .confirmBtn {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-md;
+  font-size: $font-size-base;
+}
+
+.deleteBtn {
+  background: $color-bg-page;
+}
+
+.cancelBtn {
+  background: $color-bg-page;
+  color: $color-text-secondary;
+}
+
+.confirmBtn {
+  background: $color-primary;
+}

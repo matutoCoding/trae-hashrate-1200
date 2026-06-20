@@ -1,14 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, Textarea, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import StatusTag from '../../components/StatusTag';
-import {
-  getRecipientById,
-  getQualificationReviewById,
-  mockQualificationReviews,
-  getPendingQualificationReviews
-} from '../../data/distributionData';
+import { useAppStore } from '../../store';
 import {
   QUALIFICATION_TYPE_MAP,
   RECIPIENT_STATUS_MAP,
@@ -17,11 +12,28 @@ import {
 import { formatDate, formatDateTime } from '../../utils/date';
 
 const QualificationReviewPage: React.FC = () => {
-  const [review, setReview] = useState<any>(null);
-  const [recipient, setRecipient] = useState<any>(null);
-  const [remark, setRemark] = useState('');
+  const [reviewId, setReviewId] = useState<string>('');
   const [isListMode, setIsListMode] = useState(true);
-  const [pendingList, setPendingList] = useState<any[]>([]);
+  const [remark, setRemark] = useState('');
+
+  const qualificationReviews = useAppStore(state => state.qualificationReviews);
+  const recipients = useAppStore(state => state.recipients);
+  const processQualificationReview = useAppStore(state => state.processQualificationReview);
+
+  const pendingList = useMemo(() => {
+    return qualificationReviews.filter(r => r.status === 'pending');
+  }, [qualificationReviews]);
+
+  const review = useMemo(() => {
+    return qualificationReviews.find(r => r.id === reviewId);
+  }, [qualificationReviews, reviewId]);
+
+  const recipient = useMemo(() => {
+    if (review) {
+      return recipients.find(r => r.id === review.recipientId);
+    }
+    return null;
+  }, [review, recipients]);
 
   useEffect(() => {
     const pages = Taro.getCurrentPages();
@@ -31,19 +43,11 @@ const QualificationReviewPage: React.FC = () => {
 
     if (id) {
       setIsListMode(false);
-      const reviewData = getQualificationReviewById(id);
-      setReview(reviewData);
-
-      if (reviewData) {
-        const recipientData = getRecipientById(reviewData.recipientId);
-        setRecipient(recipientData);
-      }
-
+      setReviewId(id);
       console.log('[QualificationReview] 审核详情:', id);
     } else {
-      const list = getPendingQualificationReviews();
-      setPendingList(list);
-      console.log('[QualificationReview] 待审核列表:', list.length);
+      setIsListMode(true);
+      console.log('[QualificationReview] 待审核列表:', pendingList.length);
     }
   }, []);
 
@@ -51,13 +55,25 @@ const QualificationReviewPage: React.FC = () => {
     Taro.showModal({
       title: '审核通过',
       content: '确认通过该受助资格审核？',
+      editable: true,
+      placeholderText: '请输入审核意见（选填）',
       success: (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '审核通过', icon: 'success' });
-          console.log('[QualificationReview] 审核通过:', review?.id, remark);
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
+          const result = processQualificationReview({
+            reviewId,
+            action: 'approve',
+            remark: res.content || remark || '',
+            reviewer: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'success' });
+            console.log('[QualificationReview] 审核通过:', reviewId, res.content);
+            setTimeout(() => {
+              Taro.navigateBack();
+            }, 1500);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
@@ -75,11 +91,21 @@ const QualificationReviewPage: React.FC = () => {
             Taro.showToast({ title: '请输入驳回原因', icon: 'none' });
             return;
           }
-          Taro.showToast({ title: '已驳回', icon: 'none' });
-          console.log('[QualificationReview] 审核驳回:', review?.id, res.content);
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
+          const result = processQualificationReview({
+            reviewId,
+            action: 'reject',
+            remark: res.content,
+            reviewer: '当前用户'
+          });
+          if (result.success) {
+            Taro.showToast({ title: result.message, icon: 'none' });
+            console.log('[QualificationReview] 审核驳回:', reviewId, res.content);
+            setTimeout(() => {
+              Taro.navigateBack();
+            }, 1500);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });

@@ -3,8 +3,7 @@ import { View, Text, Input, Textarea, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
-import { mockDrugs, getBatchesByDrugId } from '../../data/drugData';
-import { mockRouterRules, getRouterRulesByType } from '../../data/approvalData';
+import { useAppStore } from '../../store';
 import { calculateFifo } from '../../utils/fifo';
 import { matchRouterRule } from '../../utils/approvalRouter';
 import { formatDate } from '../../utils/date';
@@ -18,23 +17,45 @@ const StockOutApplyPage: React.FC = () => {
   const [showDrugPicker, setShowDrugPicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const selectedDrug = useMemo(() => {
-    return mockDrugs.find(d => d.id === selectedDrugId);
-  }, [selectedDrugId]);
+  const drugs = useAppStore(state => state.drugs);
+  const batches = useAppStore(state => state.batches);
+  const routerRules = useAppStore(state => state.routerRules);
+  const reservedQuantities = useAppStore(state => state.reservedQuantities);
+  const createStockOutApproval = useAppStore(state => state.createStockOutApproval);
+  const getAvailableStock = useAppStore(state => state.getAvailableStock);
 
-  const batches = useMemo(() => {
+  const selectedDrug = useMemo(() => {
+    return drugs.find(d => d.id === selectedDrugId);
+  }, [drugs, selectedDrugId]);
+
+  const drugBatches = useMemo(() => {
     if (!selectedDrugId) return [];
-    return getBatchesByDrugId(selectedDrugId);
-  }, [selectedDrugId]);
+    return batches.filter(b => b.drugId === selectedDrugId);
+  }, [batches, selectedDrugId]);
+
+  const availableBatches = useMemo(() => {
+    return drugBatches
+      .filter(b => b.status !== 'expired' && b.status !== 'locked' && b.status !== 'used_up')
+      .map(b => ({
+        ...b,
+        availableQuantity: b.remainingQuantity - (reservedQuantities[b.id] || 0)
+      }))
+      .filter(b => b.availableQuantity > 0);
+  }, [drugBatches, reservedQuantities]);
+
+  const availableStock = useMemo(() => {
+    if (!selectedDrugId) return 0;
+    return getAvailableStock(selectedDrugId);
+  }, [selectedDrugId, getAvailableStock]);
 
   const fifoResult = useMemo(() => {
     if (!selectedDrugId || !quantity || parseInt(quantity) <= 0) return null;
-    return calculateFifo(batches, parseInt(quantity));
-  }, [selectedDrugId, quantity, batches]);
+    return calculateFifo(availableBatches, parseInt(quantity));
+  }, [selectedDrugId, quantity, availableBatches]);
 
   const routerMatch = useMemo(() => {
     if (!selectedDrug || !quantity || parseInt(quantity) <= 0) return null;
-    const rules = getRouterRulesByType('stock_out');
+    const enabledRules = routerRules.filter(r => r.enabled && r.approvalType === 'stock_out');
     const content = {
       drugId: selectedDrug.id,
       drugName: selectedDrug.name,
@@ -44,13 +65,14 @@ const StockOutApplyPage: React.FC = () => {
       amount: (parseFloat(quantity) || 0) * selectedDrug.price,
       purpose
     };
-    return matchRouterRule(rules, content);
-  }, [selectedDrug, quantity, purpose]);
+    const matchedRule = matchRouterRule(enabledRules, content);
+    return matchedRule ? { matched: true, rule: matchedRule, branches: matchedRule.branches } : null;
+  }, [selectedDrug, quantity, purpose, routerRules]);
 
   const filteredDrugs = useMemo(() => {
-    if (selectedCategory === 'all') return mockDrugs.filter(d => d.status !== 'expired');
-    return mockDrugs.filter(d => d.category === selectedCategory && d.status !== 'expired');
-  }, [selectedCategory]);
+    if (selectedCategory === 'all') return drugs.filter(d => d.status !== 'expired');
+    return drugs.filter(d => d.category === selectedCategory && d.status !== 'expired');
+  }, [drugs, selectedCategory]);
 
   const handleDrugSelect = (drugId: string) => {
     setSelectedDrugId(drugId);
@@ -68,29 +90,37 @@ const StockOutApplyPage: React.FC = () => {
       Taro.showToast({ title: '请输入出库数量', icon: 'none' });
       return;
     }
-    if (!fifoResult?.canFulfill) {
+    if (!fifoResult?.success) {
       Taro.showToast({ title: '库存不足', icon: 'none' });
+      return;
+    }
+    if (!routerMatch) {
+      Taro.showToast({ title: '未匹配到审批规则', icon: 'none' });
       return;
     }
 
     Taro.showModal({
       title: '提交出库申请',
       content: `确认申请出库 ${selectedDrug?.name} ${quantity} ${selectedDrug?.unit}？
-系统将自动按 FIFO 规则分配批次。`,
+系统将自动按 FIFO 规则分配批次，并走 "${routerMatch.rule?.name}" 审批流程。`,
       success: (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '申请已提交', icon: 'success' });
-          console.log('[StockOutApply] 提交申请:', {
+          const result = createStockOutApproval({
             drugId: selectedDrugId,
             quantity: parseInt(quantity),
+            applicant: '当前用户',
             purpose,
-            remark,
-            fifoResult,
-            routerMatch
+            remark
           });
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
+          if (result.success) {
+            Taro.showToast({ title: '申请已提交', icon: 'success' });
+            console.log('[StockOutApply] 提交申请成功，审批单ID:', result.orderId);
+            setTimeout(() => {
+              Taro.navigateBack();
+            }, 1500);
+          } else {
+            Taro.showToast({ title: result.message, icon: 'none' });
+          }
         }
       }
     });
@@ -119,28 +149,32 @@ const StockOutApplyPage: React.FC = () => {
         </View>
 
         <ScrollView scrollY style={{ maxHeight: '600rpx' }}>
-          {filteredDrugs.map(drug => (
-            <View
-              key={drug.id}
-              className={styles.batchItem}
-              onClick={() => handleDrugSelect(drug.id)}
-              style={{
-                background: selectedDrugId === drug.id ? 'rgba(0, 180, 42, 0.05)' : '#fff',
-                borderLeft: selectedDrugId === drug.id ? '6rpx solid #00b42a' : 'none',
-                borderRadius: selectedDrugId === drug.id ? '8rpx' : 0
-              }}
-            >
-              <View className={styles.batchInfo}>
-                <Text className={styles.batchNo}>{drug.name}</Text>
-                <Text className={styles.batchDate}>
-                  {drug.spec} · {DRUG_CATEGORY_MAP[drug.category]} · 库存{drug.totalStock}{drug.unit}
+          {filteredDrugs.map(drug => {
+            const available = getAvailableStock(drug.id);
+            return (
+              <View
+                key={drug.id}
+                className={styles.batchItem}
+                onClick={() => available > 0 && handleDrugSelect(drug.id)}
+                style={{
+                  background: selectedDrugId === drug.id ? 'rgba(0, 180, 42, 0.05)' : '#fff',
+                  borderLeft: selectedDrugId === drug.id ? '6rpx solid #00b42a' : 'none',
+                  borderRadius: selectedDrugId === drug.id ? '8rpx' : 0,
+                  opacity: available <= 0 ? 0.5 : 1
+                }}
+              >
+                <View className={styles.batchInfo}>
+                  <Text className={styles.batchNo}>{drug.name}</Text>
+                  <Text className={styles.batchDate}>
+                    {drug.spec} · {DRUG_CATEGORY_MAP[drug.category]} · 可用库存{available}{drug.unit}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: '28rpx', color: selectedDrugId === drug.id ? '#00b42a' : available <= 0 ? '#c9cdd4' : '#86909c' }}>
+                  {available <= 0 ? '无库存' : selectedDrugId === drug.id ? '✓ 已选' : '选择'}
                 </Text>
               </View>
-              <Text style={{ fontSize: '28rpx', color: selectedDrugId === drug.id ? '#00b42a' : '#86909c' }}>
-                {selectedDrugId === drug.id ? '✓ 已选' : '选择'}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -154,7 +188,7 @@ const StockOutApplyPage: React.FC = () => {
               <Input
                 className={styles.formInput}
                 type="number"
-                placeholder="请输入数量"
+                placeholder={`最多 ${availableStock} ${selectedDrug.unit}`}
                 value={quantity}
                 onInput={(e) => setQuantity(e.detail.value)}
               />
@@ -165,6 +199,16 @@ const StockOutApplyPage: React.FC = () => {
                 <Text className={styles.drugSelectorText}>{selectedDrug.unit}</Text>
               </View>
             </View>
+          </View>
+          <View style={{ padding: '16rpx 24rpx', background: '#f7f8fa', borderRadius: '8rpx', marginBottom: '16rpx' }}>
+            <Text style={{ fontSize: '24rpx', color: '#86909c' }}>
+              可用库存：{availableStock} {selectedDrug.unit}
+              {reservedQuantities && Object.keys(reservedQuantities).length > 0 && (
+                <Text style={{ color: '#ff7d00', marginLeft: '16rpx' }}>
+                  (已申请占用中)
+                </Text>
+              )}
+            </Text>
           </View>
 
           <View className={styles.formItem}>
@@ -196,7 +240,7 @@ const StockOutApplyPage: React.FC = () => {
           <View className={styles.fifoSection}>
             <Text className={styles.fifoTitle}>
               <Text className={styles.fifoIcon}>📋</Text>
-              {fifoResult.canFulfill ? '✓ 库存充足，可满足需求' : `✗ 库存不足，缺 ${fifoResult.shortfall} 单位`}
+              {fifoResult.success ? '✓ 库存充足，可满足需求' : `✗ 库存不足，缺 ${fifoResult.shortfall || 0} 单位`}
             </Text>
             <Text className={styles.fifoDesc}>
               系统已按效期从近到远自动分配批次，确保先进先出
@@ -204,17 +248,17 @@ const StockOutApplyPage: React.FC = () => {
           </View>
 
           <View className={styles.batchList} style={{ marginTop: '24rpx' }}>
-            {fifoResult.batchList.map((item, index) => (
+            {fifoResult.allocations.map((item, index) => (
               <View key={item.batchId} className={styles.batchItem}>
                 <View className={styles.batchInfo}>
                   <Text className={styles.batchNo}>第{index + 1}批 · {item.batchNo}</Text>
                   <Text className={styles.batchDate}>
-                    有效期至 {formatDate(item.expiryDate)} · 库存{item.remainingQuantity}{item.unit}
+                    有效期至 {formatDate(item.expiryDate)}
                   </Text>
                 </View>
                 <View className={styles.batchQty}>
                   <Text className={styles.qtyNumber}>出 {item.quantity}</Text>
-                  <Text className={styles.qtyUnit}>{item.unit}</Text>
+                  <Text className={styles.qtyUnit}>{selectedDrug?.unit}</Text>
                 </View>
               </View>
             ))}

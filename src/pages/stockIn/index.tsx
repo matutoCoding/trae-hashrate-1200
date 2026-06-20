@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, Input, Textarea, ScrollView } from '@tarojs/components';
+import React, { useState, useMemo } from 'react';
+import { View, Text, Input, Textarea, ScrollView, Picker } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
+import { useAppStore } from '../../store';
 
 const StockInPage: React.FC = () => {
+  const drugs = useAppStore(state => state.drugs);
+  const addStockIn = useAppStore(state => state.addStockIn);
+
+  const [selectedDrugIndex, setSelectedDrugIndex] = useState<number>(-1);
   const [formData, setFormData] = useState({
+    drugId: '',
     drugName: '',
     batchNo: '',
     spec: '',
@@ -26,21 +32,63 @@ const StockInPage: React.FC = () => {
     '随货同行单据齐全'
   ];
 
+  const drugOptions = useMemo(() => {
+    return drugs.map(d => `${d.name} (${d.spec})`);
+  }, [drugs]);
+
+  const handleDrugSelect = (e: any) => {
+    const index = Number(e.detail.value);
+    setSelectedDrugIndex(index);
+    const drug = drugs[index];
+    if (drug) {
+      setFormData(prev => ({
+        ...prev,
+        drugId: drug.id,
+        drugName: drug.name,
+        spec: drug.spec,
+        unit: drug.unit,
+        manufacturer: drug.manufacturer
+      }));
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = () => {
-    if (!formData.drugName || !formData.batchNo || !formData.quantity) {
+    if (!formData.drugId || !formData.batchNo || !formData.quantity || !formData.expiryDate) {
       Taro.showToast({ title: '请填写必填项', icon: 'none' });
+      return;
+    }
+
+    const quantity = Number(formData.quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      Taro.showToast({ title: '请输入有效数量', icon: 'none' });
       return;
     }
 
     Taro.showModal({
       title: '确认入库',
-      content: `确认将 ${formData.drugName} (批号: ${formData.batchNo}) 验收入库？`,
+      content: `确认将 ${formData.drugName} (批号: ${formData.batchNo}, 数量: ${quantity} ${formData.unit}) 验收入库？`,
       success: (res) => {
         if (res.confirm) {
+          addStockIn({
+            drugId: formData.drugId,
+            drugName: formData.drugName,
+            batchNo: formData.batchNo,
+            spec: formData.spec,
+            quantity,
+            unit: formData.unit,
+            expiryDate: formData.expiryDate,
+            productionDate: formData.productionDate,
+            manufacturer: formData.manufacturer,
+            supplier: formData.supplier,
+            receivePerson: formData.receivePerson || '当前用户',
+            inspectionStatus: 'passed',
+            inspectionRemark: formData.remark,
+            remark: formData.remark
+          });
           Taro.showToast({ title: '入库成功', icon: 'success' });
           console.log('[StockIn] 入库提交:', formData);
           setTimeout(() => {
@@ -57,7 +105,23 @@ const StockInPage: React.FC = () => {
         <Text className={styles.formTitle}>药品信息</Text>
 
         <View className={styles.formItem}>
-          <Text className={styles.formLabel}>药品名称 *</Text>
+          <Text className={styles.formLabel}>选择药品 *</Text>
+          <Picker
+            mode="selector"
+            range={drugOptions}
+            value={selectedDrugIndex >= 0 ? selectedDrugIndex : 0}
+            onChange={handleDrugSelect}
+          >
+            <View className={styles.formInput}>
+              <Text style={{ color: selectedDrugIndex >= 0 ? '#1d2129' : '#c9cdd4' }}>
+                {selectedDrugIndex >= 0 ? drugOptions[selectedDrugIndex] : '请选择入库药品'}
+              </Text>
+            </View>
+          </Picker>
+        </View>
+
+        <View className={styles.formItem}>
+          <Text className={styles.formLabel}>药品名称</Text>
           <Input
             className={styles.formInput}
             placeholder="请输入药品名称"

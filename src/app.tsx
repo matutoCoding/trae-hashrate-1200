@@ -1,11 +1,15 @@
 import React, { useEffect } from 'react';
 import { useDidShow, useDidHide } from '@tarojs/taro';
+import { useAppStore } from './store';
 // 全局样式
 import './app.scss';
 
 function App(props) {
-  // 可以使用所有的 React Hooks
-  useEffect(() => {});
+  const initData = useAppStore(state => state.initData);
+
+  useEffect(() => {
+    initData();
+  }, [initData]);
 
   // 对应 onShow
   useDidShow(() => {});

@@ -6,7 +6,7 @@ import classnames from 'classnames';
 import StatCard from '../../components/StatCard';
 import DrugCard from '../../components/DrugCard';
 import EmptyState from '../../components/EmptyState';
-import { mockDrugs, mockDrugBatches } from '../../data/drugData';
+import { useAppStore } from '../../store';
 import { DRUG_CATEGORY_MAP } from '../../types/drug';
 import type { DrugCategory } from '../../types/drug';
 
@@ -14,21 +14,27 @@ const DrugPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
+  const drugs = useAppStore(state => state.drugs);
+  const batches = useAppStore(state => state.batches);
+  const expiryWarnings = useAppStore(state => state.expiryWarnings);
+  const refreshAllDrugStatus = useAppStore(state => state.refreshAllDrugStatus);
+  const refreshExpiryWarnings = useAppStore(state => state.refreshExpiryWarnings);
+
   const categories = [
     { key: 'all', label: '全部' },
     ...Object.entries(DRUG_CATEGORY_MAP).map(([key, value]) => ({ key, label: value }))
   ];
 
   const stats = useMemo(() => {
-    const totalDrugs = mockDrugs.length;
-    const totalBatches = mockDrugBatches.length;
-    const expiringCount = mockDrugBatches.filter(b => b.status === 'expiring_soon').length;
-    const expiredCount = mockDrugBatches.filter(b => b.status === 'expired').length;
+    const totalDrugs = drugs.length;
+    const totalBatches = batches.length;
+    const expiringCount = batches.filter(b => b.status === 'expiring_soon').length;
+    const expiredCount = batches.filter(b => b.status === 'expired').length;
     return { totalDrugs, totalBatches, expiringCount, expiredCount };
-  }, []);
+  }, [drugs, batches]);
 
   const filteredDrugs = useMemo(() => {
-    return mockDrugs.filter(drug => {
+    return drugs.filter(drug => {
       const matchSearch = !searchText ||
         drug.name.includes(searchText) ||
         drug.genericName.toLowerCase().includes(searchText.toLowerCase());
@@ -37,7 +43,7 @@ const DrugPage: React.FC = () => {
 
       return matchSearch && matchCategory;
     });
-  }, [searchText, activeCategory]);
+  }, [drugs, searchText, activeCategory]);
 
   const handleDrugClick = (drugId: string) => {
     Taro.navigateTo({
@@ -58,6 +64,8 @@ const DrugPage: React.FC = () => {
   };
 
   const handleRefresh = () => {
+    refreshAllDrugStatus();
+    refreshExpiryWarnings();
     Taro.showToast({ title: '刷新成功', icon: 'success' });
     setTimeout(() => {
       Taro.stopPullDownRefresh();
